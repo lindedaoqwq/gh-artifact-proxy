@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GH Artifact Proxy — GitHub Actions Artifacts 加速下载</title>
+  <meta name="description" content="输入 GitHub Actions Workflow Run 链接，即可读取该 Run 的 Artifact 列表，并通过社区代理加速下载。纯静态页面，可部署于 GitHub Pages。" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta property="og:title" content="GH Artifact Proxy — GitHub Actions Artifacts 加速下载" />
+  <meta property="og:description" content="粘贴 Workflow Run 链接，一键读取并加速下载 GitHub Actions Artifacts。" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3b341' d='M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>
+        </span>
+        <div class="brand-text">
+          <strong>GH Artifact Proxy</strong>
+          <small>GitHub Actions Artifacts 加速下载</small>
+        </div>
+      </div>
+      <a id="repo-link" class="repo-link" href="#" target="_blank" rel="noopener" hidden>
+        <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 输入区 -->
+    <section class="card">
+      <label class="field-label" for="run-url">Actions Workflow Run 链接</label>
+      <div class="input-row">
+        <input id="run-url" type="text" spellcheck="false" autocomplete="off" list="url-examples"
+               placeholder="https://github.com/owner/repo/actions/runs/1234567890" />
+        <button id="parse-btn" class="btn btn-primary" type="button">解析</button>
+      </div>
+      <datalist id="url-examples">
+        <option value="https://github.com/owner/repo/actions/runs/1234567890"></option>
+        <option value="owner/repo/1234567890"></option>
+      </datalist>
+      <p class="hint">
+        支持 <code>github.com/owner/repo/actions/runs/&lt;id&gt;</code>、<code>owner/repo/&lt;id&gt;</code>、
+        <code>api.github.com/repos/…</code> 等格式，粘贴后自动识别。
+      </p>
+      <div id="history" class="history" hidden></div>
+
+      <details class="advanced">
+        <summary>高级选项（Token / 下载代理 / 下载方式）</summary>
+        <div class="advanced-grid">
+          <div class="adv-block">
+            <label class="field-label" for="token">GitHub Token <span class="optional">可选</span></label>
+            <div class="input-row">
+              <input id="token" type="password" spellcheck="false" autocomplete="off" placeholder="ghp_… 或 github_pat_…" />
+              <button id="token-toggle" class="btn btn-ghost btn-narrow" type="button">显示</button>
+              <button id="token-clear" class="btn btn-ghost btn-narrow" type="button">清除</button>
+            </div>
+            <p class="hint">
+              用于访问<strong>私有仓库</strong>或提升 API 限额（60 → 5000 次/小时）。
+              Token 仅保存在浏览器 localStorage，并直接请求 api.github.com，<strong>不会发送到任何代理服务器</strong>。
+            </p>
+          </div>
+
+          <div class="adv-block">
+            <label class="field-label" for="proxy-select">下载代理</label>
+            <div class="input-row">
+              <select id="proxy-select"></select>
+            </div>
+            <input id="proxy-custom" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="https://your-proxy.example.com/" hidden />
+            <p class="hint">
+              代理以「前缀 + 原始下载链接」的方式加速 Artifact 压缩包。第三方社区代理可用性会变化，失效时请更换或使用自定义代理。
+            </p>
+          </div>
+
+          <div class="adv-block">
+            <span class="field-label">下载方式</span>
+            <div class="radio-row">
+              <label><input type="radio" name="download-mode" value="auto" checked /> 自动（有 Token 直连，否则走代理）</label>
+              <label><input type="radio" name="download-mode" value="proxy" /> 总是走代理</label>
+              <label><input type="radio" name="download-mode" value="direct" /> 总是直连</label>
+            </div>
+            <p class="hint">「总是走代理」仅适用于公有仓库；「总是直连」可用于私有仓库（需 Token）并显示实时下载进度。</p>
+          </div>
+
+          <div class="adv-block">
+            <label class="checkbox-row">
+              <input type="checkbox" id="api-via-proxy" />
+              <span>API 请求也走代理（仅公有仓库，且不要填写 Token）</span>
+            </label>
+            <p class="hint">当你所在网络无法直接访问 api.github.com 时开启此选项；此时 API 读取与 Artifact 下载均经代理完成。</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 状态提示 -->
+    <div id="status" class="status" hidden></div>
+
+    <!-- Run 信息 -->
+    <section id="run-panel" class="card" hidden>
+      <div class="run-head">
+        <h2>Run <span id="run-number"></span></h2>
+        <span id="run-status" class="run-status"></span>
+      </div>
+      <dl id="run-meta" class="run-meta"></dl>
+    </section>
+
+    <!-- Artifact 列表 -->
+    <section id="artifacts-panel" class="card" hidden>
+      <div class="artifacts-head">
+        <h2>Artifacts <span id="artifact-count" class="badge">0</span></h2>
+        <span id="proxy-indicator" class="proxy-indicator"></span>
+      </div>
+      <div id="artifact-list" class="artifact-list"></div>
+    </section>
+
+    <!-- 使用说明 -->
+    <section class="card howto">
+      <h2>如何使用</h2>
+      <ol>
+        <li>打开 GitHub Actions 的 Workflow Run 页面，复制浏览器地址栏中的链接；</li>
+        <li>粘贴到上方输入框，点击「解析」（粘贴完整链接时会自动开始）；</li>
+        <li>在 Artifact 列表中点击「下载」，或点「复制链接」用 wget / curl / 下载工具下载。</li>
+      </ol>
+      <p class="hint">
+        提示：私有仓库请在高级选项中填写具备 <code>repo</code> 权限的 Token；Artifact 默认保留 90 天，过期后不可下载。
+        如果代理下载失败，可依次尝试其他代理、切换下载方式，或改用
+        <code>gh run download &lt;run-id&gt; -R owner/repo</code>。
+      </p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>GH Artifact Proxy · 纯静态页面 · 可部署于 GitHub Pages · <span id="rate-limit"></span></p>
+      <p class="disclaimer">下载代理由第三方社区维护，可用性与安全性请自行评估；本页面不存储任何 Token 与下载数据，所有请求均从你的浏览器直接发出。</p>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- 下载进度浮层 -->
+  <div id="progress-overlay" class="progress-overlay" hidden>
+    <div class="progress-box" role="dialog" aria-modal="true" aria-labelledby="progress-filename">
+      <div class="progress-title">正在下载</div>
+      <div id="progress-filename" class="progress-filename"></div>
+      <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+      <div class="progress-meta">
+        <span id="progress-pct">0%</span>
+        <span id="progress-sizes"></span>
+      </div>
+      <div id="progress-msg" class="progress-msg"></div>
+      <div class="progress-actions">
+        <button id="progress-cancel" class="btn btn-ghost" type="button">取消</button>
+        <button id="progress-close" class="btn btn-primary" type="button" hidden>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <noscript>
+    <div class="container"><p class="noscript-tip">本工具需要启用 JavaScript 才能读取 Artifact 列表。</p></div>
+  </noscript>
+
+  <script src="app.js"></script>
+</body>
+</html>
