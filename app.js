@@ -14,7 +14,7 @@
 
 /** 部署后请改成你自己的仓库地址；留空则隐藏右上角入口 */
 const CONFIG = {
-  repoUrl: 'https://github.com/gh-artifact-proxy/gh-artifact-proxy',
+  repoUrl: 'https://github.com/lindedaoqwq/gh-artifact-proxy',
 };
 
 /**
