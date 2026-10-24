@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GH Artifact Proxy — GitHub Actions Artifacts 加速下载</title>
-  <meta name="description" content="输入 GitHub Actions Workflow Run 链接，即可读取该 Run 的 Artifact 列表，并通过社区代理加速下载。纯静态页面，可部署于 GitHub Pages。" />
-  <meta name="theme-color" content="#0d1117" />
-  <meta property="og:title" content="GH Artifact Proxy — GitHub Actions Artifacts 加速下载" />
+  <title>GH Artifact Proxy — GitHub Artifacts 加速下载</title>
+  <meta name="description" content="开发者专属的 GitHub Artifacts 全球加速网关：粘贴 Workflow Run 链接，即刻读取 Artifact 列表并极速下载。" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta property="og:title" content="GH Artifact Proxy — GitHub Artifacts 加速下载" />
   <meta property="og:description" content="粘贴 Workflow Run 链接，一键读取并加速下载 GitHub Actions Artifacts。" />
   <meta property="og:type" content="website" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e3b341' d='M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%233b82f6' d='M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -17,87 +17,96 @@
     <div class="container header-inner">
       <div class="brand">
         <span class="brand-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>
         </span>
         <div class="brand-text">
           <strong>GH Artifact Proxy</strong>
-          <small>GitHub Actions Artifacts 加速下载</small>
+          <small>GitHub Artifacts 加速下载</small>
         </div>
       </div>
-      <a id="repo-link" class="repo-link" href="#" target="_blank" rel="noopener" hidden>
-        <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span>GitHub</span>
-      </a>
+      <nav class="header-nav">
+        <a href="#advanced" class="nav-link">高级选项</a>
+        <a id="repo-link" class="repo-link" href="#" target="_blank" rel="noopener" hidden>
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A7.995 7.995 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>GitHub</span>
+        </a>
+      </nav>
     </div>
   </header>
 
   <main class="container">
-    <!-- 输入区 -->
-    <section class="card">
-      <label class="field-label" for="run-url">Actions Workflow Run 链接</label>
-      <div class="input-row">
-        <input id="run-url" type="text" spellcheck="false" autocomplete="off" list="url-examples"
-               placeholder="https://github.com/owner/repo/actions/runs/1234567890" />
-        <button id="parse-btn" class="btn btn-primary" type="button">解析</button>
-      </div>
-      <datalist id="url-examples">
-        <option value="https://github.com/owner/repo/actions/runs/1234567890"></option>
-        <option value="owner/repo/1234567890"></option>
-      </datalist>
-      <p class="hint">
-        支持 <code>github.com/owner/repo/actions/runs/&lt;id&gt;</code>、<code>owner/repo/&lt;id&gt;</code>、
-        <code>api.github.com/repos/…</code> 等格式，粘贴后自动识别。
-      </p>
-      <div id="history" class="history" hidden></div>
+    <!-- Hero -->
+    <section class="hero">
+      <span class="hero-badge">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>
+        开发者专属的 GitHub Artifacts 全球加速网关
+      </span>
+      <h1>GitHub Artifacts <span class="grad">加速下载</span></h1>
+      <p class="hero-sub">粘贴 Workflow Run 链接，即刻读取 Artifact 列表，经全球加速节点极速下载构建产物</p>
 
-      <details class="advanced">
-        <summary>高级选项（Token / 下载代理 / 下载方式）</summary>
-        <div class="advanced-grid">
-          <div class="adv-block">
-            <label class="field-label" for="token">GitHub Token <span class="optional">可选</span></label>
-            <div class="input-row">
-              <input id="token" type="password" spellcheck="false" autocomplete="off" placeholder="ghp_… 或 github_pat_…" />
-              <button id="token-toggle" class="btn btn-ghost btn-narrow" type="button">显示</button>
-              <button id="token-clear" class="btn btn-ghost btn-narrow" type="button">清除</button>
-            </div>
-            <p class="hint">
-              用于访问<strong>私有仓库</strong>或提升 API 限额（60 → 5000 次/小时）。
-              Token 仅保存在浏览器 localStorage，并直接请求 api.github.com，<strong>不会发送到任何代理服务器</strong>。
-            </p>
-          </div>
-
-          <div class="adv-block">
-            <label class="field-label" for="proxy-select">下载代理</label>
-            <div class="input-row">
-              <select id="proxy-select"></select>
-            </div>
-            <input id="proxy-custom" type="text" spellcheck="false" autocomplete="off"
-                   placeholder="https://your-proxy.example.com/" hidden />
-            <p class="hint">
-              代理以「前缀 + 原始下载链接」的方式加速 Artifact 压缩包。第三方社区代理可用性会变化，失效时请更换或使用自定义代理。
-            </p>
-          </div>
-
-          <div class="adv-block">
-            <span class="field-label">下载方式</span>
-            <div class="radio-row">
-              <label><input type="radio" name="download-mode" value="auto" checked /> 自动（有 Token 直连，否则走代理）</label>
-              <label><input type="radio" name="download-mode" value="proxy" /> 总是走代理</label>
-              <label><input type="radio" name="download-mode" value="direct" /> 总是直连</label>
-            </div>
-            <p class="hint">「总是走代理」仅适用于公有仓库；「总是直连」可用于私有仓库（需 Token）并显示实时下载进度。</p>
-          </div>
-
-          <div class="adv-block">
-            <label class="checkbox-row">
-              <input type="checkbox" id="api-via-proxy" />
-              <span>API 请求也走代理（仅公有仓库，且不要填写 Token）</span>
-            </label>
-            <p class="hint">当你所在网络无法直接访问 api.github.com 时开启此选项；此时 API 读取与 Artifact 下载均经代理完成。</p>
-          </div>
+      <div class="url-card">
+        <div class="input-row">
+          <input id="run-url" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="https://github.com/owner/repo/actions/runs/1234567890" />
+          <button id="parse-btn" class="btn btn-primary btn-lg" type="button">解析</button>
         </div>
-      </details>
+        <div class="examples">
+          <span class="examples-label">快捷示例：</span>
+          <button class="example-chip" type="button" data-example="https://github.com/actions/upload-artifact/actions/runs/39555877185">完整 Run 链接</button>
+          <button class="example-chip" type="button" data-example="actions/upload-artifact/39555877185">owner/repo/run-id</button>
+        </div>
+      </div>
+      <div id="history" class="history" hidden></div>
     </section>
+
+    <!-- 高级选项 -->
+    <details class="advanced" id="advanced">
+      <summary>高级选项（Token / 下载代理 / 下载方式）</summary>
+      <div class="advanced-grid">
+        <div class="adv-block">
+          <label class="field-label" for="token">GitHub Token <span class="optional">可选</span></label>
+          <div class="input-row">
+            <input id="token" type="password" spellcheck="false" autocomplete="off" placeholder="ghp_… 或 github_pat_…" />
+            <button id="token-toggle" class="btn btn-ghost btn-narrow" type="button">显示</button>
+            <button id="token-clear" class="btn btn-ghost btn-narrow" type="button">清除</button>
+          </div>
+          <p class="hint">
+            用于访问<strong>私有仓库</strong>或提升 API 限额（60 → 5000 次/小时）。
+            Token 仅保存在浏览器 localStorage，并直接请求 api.github.com，<strong>不会发送到任何代理服务器</strong>。
+          </p>
+        </div>
+
+        <div class="adv-block">
+          <label class="field-label" for="proxy-select">下载代理</label>
+          <div class="input-row">
+            <select id="proxy-select"></select>
+          </div>
+          <input id="proxy-custom" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="https://your-proxy.example.com/" hidden />
+          <p class="hint">
+            代理以「前缀 + 原始下载链接」的方式加速 Artifact 压缩包。第三方社区代理可用性会变化，失效时请更换或使用自定义代理。
+          </p>
+        </div>
+
+        <div class="adv-block">
+          <span class="field-label">下载方式</span>
+          <div class="radio-row">
+            <label><input type="radio" name="download-mode" value="auto" checked /> 自动（有 Token 直连，否则走代理）</label>
+            <label><input type="radio" name="download-mode" value="proxy" /> 总是走代理</label>
+            <label><input type="radio" name="download-mode" value="direct" /> 总是直连</label>
+          </div>
+          <p class="hint">「总是走代理」仅适用于公有仓库；「总是直连」可用于私有仓库（需 Token）并显示实时下载进度。</p>
+        </div>
+
+        <div class="adv-block">
+          <label class="checkbox-row">
+            <input type="checkbox" id="api-via-proxy" />
+            <span>API 请求也走代理（仅公有仓库，且不要填写 Token）</span>
+          </label>
+          <p class="hint">当你所在网络无法直接访问 api.github.com 时开启此选项；此时 API 读取与 Artifact 下载均经代理完成。</p>
+        </div>
+      </div>
+    </details>
 
     <!-- 状态提示 -->
     <div id="status" class="status" hidden></div>
@@ -118,6 +127,41 @@
         <span id="proxy-indicator" class="proxy-indicator"></span>
       </div>
       <div id="artifact-list" class="artifact-list"></div>
+    </section>
+
+    <!-- 特性 -->
+    <section class="features">
+      <h2 class="features-title">为什么选择 GH Artifact Proxy？</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon icon-blue">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z"/></svg>
+          </div>
+          <h3>极速传输 · 全球 Anycast</h3>
+          <p>依托全球分布式边缘加速节点与优质链路，彻底告别 Artifact 下载超时与断连。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-green">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-3.5 8-10V5.5L12 2 4 5.5V12c0 6.5 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <h3>安全透明 · 零数据截留</h3>
+          <p>端到端 HTTPS 双向加密代理，纯流式转发，不篡改、不缓存、不留存任何构建产物。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-amber">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <h3>全场景覆盖 · 即开即用</h3>
+          <p>公有仓库代理加速、私有仓库 Token 直连、大文件流式进度，无需安装任何客户端。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon icon-violet">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg>
+          </div>
+          <h3>多代理调度 · 一键切换</h3>
+          <p>内置多个社区加速节点并支持自定义代理，失效时随手切换，复制链接即走 wget / curl。</p>
+        </div>
+      </div>
     </section>
 
     <!-- 使用说明 -->

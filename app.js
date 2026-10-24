@@ -23,6 +23,7 @@ const CONFIG = {
  */
 const PROXIES = [
   { name: 'gh-proxy.com（推荐，支持 artifact 路线）', prefix: 'https://gh-proxy.com/' },
+  { name: 'gh-proxy.org', prefix: 'https://gh-proxy.org/' },
   { name: 'ghfast.top', prefix: 'https://ghfast.top/' },
   { name: 'ghproxy.net', prefix: 'https://ghproxy.net/' },
   { name: 'mirror.ghproxy.com', prefix: 'https://mirror.ghproxy.com/' },
@@ -393,9 +394,6 @@ function buildArtifactItem(artifact) {
   el.className = 'artifact-item' + (artifact.expired ? ' is-expired' : '');
   el.dataset.artifactId = String(artifact.id);
 
-  const url = buildProxiedUrl(artifact.archive_download_url);
-  const mode = effectiveMode();
-
   el.innerHTML = `
     <div class="artifact-icon">${ICON_BOX}</div>
     <div class="artifact-info">
@@ -413,21 +411,61 @@ function buildArtifactItem(artifact) {
 
   // 事件统一由 #artifact-list 上的委托监听处理（见 initArtifactListDelegation），
   // 这样即使列表因切换 Token / 代理而重渲染，点击依然有效。
-  const dl = el.querySelector('[data-action="download"]');
+  applyArtifactLinkState(el, artifact);
+  return el;
+}
 
+/**
+ * 将 artifact 的下载按钮状态同步到 DOM（新建与就地刷新共用）。
+ * 不销毁/重建节点，保证进行中的点击事件不被打断。
+ */
+function applyArtifactLinkState(el, artifact) {
+  const dl = el.querySelector('[data-action="download"]');
+  if (!dl) return;
   if (artifact.expired) {
     dl.classList.add('is-disabled');
     dl.setAttribute('aria-disabled', 'true');
+    dl.removeAttribute('href');
+    dl.removeAttribute('target');
+    dl.removeAttribute('rel');
     dl.title = '该 Artifact 已过期，无法下载';
-  } else if (mode === 'direct') {
+  } else if (effectiveMode() === 'direct') {
+    dl.classList.remove('is-disabled');
+    dl.removeAttribute('aria-disabled');
+    dl.removeAttribute('href');
+    dl.removeAttribute('target');
+    dl.removeAttribute('rel');
     dl.title = '浏览器直连下载' + (state.token ? '（携带 Token）' : '（匿名，仅公有仓库）');
   } else {
+    const url = buildProxiedUrl(artifact.archive_download_url);
+    dl.classList.remove('is-disabled');
+    dl.removeAttribute('aria-disabled');
     dl.href = url;
     dl.target = '_blank';
     dl.rel = 'noopener';
     dl.title = '经代理下载：' + url;
   }
-  return el;
+}
+
+/**
+ * 就地刷新 artifact 下载链接（切换 Token / 代理 / 下载方式时调用）。
+ *
+ * 为什么不重建列表：填写 Token 后点击下载按钮时，mousedown 会令 Token 输入框
+ * 失焦并触发 change → 若此时整表重建，click 事件的目标节点已被销毁、
+ * 无法冒泡到委托容器，导致第一次点击被吞（用户需点两次）。就地更新可彻底
+ * 避免该问题，同时保留滚动位置、更省性能。
+ */
+function refreshArtifactLinks() {
+  const list = $('artifact-list');
+  const items = Array.from(list.querySelectorAll('.artifact-item'));
+  const inSync = items.length === state.artifacts.length
+    && items.every((el, i) => el.dataset.artifactId === String(state.artifacts[i].id));
+  if (!inSync) {
+    renderArtifacts(); // DOM 与状态不一致（如空态），退回整表重渲染
+    return;
+  }
+  items.forEach((el, i) => applyArtifactLinkState(el, state.artifacts[i]));
+  $('proxy-indicator').textContent = state.artifacts.length ? '下载方式：' + downloadModeName() : '';
 }
 
 /* ---------- Artifact 列表交互（事件委托） ---------- */
@@ -698,6 +736,14 @@ function init() {
   });
   $('parse-btn').addEventListener('click', loadRun);
 
+  // 快捷示例：点击填入输入框
+  document.querySelectorAll('.example-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      urlInput.value = chip.dataset.example || '';
+      urlInput.focus();
+    });
+  });
+
   // Token
   const tokenInput = $('token');
   tokenInput.value = state.token;
@@ -706,7 +752,7 @@ function init() {
     tokenInput.value = v;
     state.token = v;
     try { localStorage.setItem(LS_KEYS.token, v); } catch (_) { /* 忽略 */ }
-    if (state.artifacts.length) renderArtifacts(); // 切换下载模式
+    refreshArtifactLinks(); // 切换下载模式（就地刷新，不重建列表）
   };
   tokenInput.addEventListener('input', normalizeToken);
   tokenInput.addEventListener('change', normalizeToken);
@@ -741,12 +787,12 @@ function init() {
     state.proxyIndex = clampProxyIndex(Number(sel.value));
     try { localStorage.setItem(LS_KEYS.proxyIndex, String(state.proxyIndex)); } catch (_) { /* 忽略 */ }
     syncCustomVisibility();
-    if (state.artifacts.length) renderArtifacts();
+    refreshArtifactLinks();
   });
   customInput.addEventListener('input', () => {
     state.customProxy = customInput.value.trim();
     try { localStorage.setItem(LS_KEYS.customProxy, state.customProxy); } catch (_) { /* 忽略 */ }
-    if (state.artifacts.length) renderArtifacts();
+    refreshArtifactLinks();
   });
 
   // 下载方式
@@ -757,7 +803,7 @@ function init() {
       if (!r.checked) return;
       state.downloadMode = r.value;
       try { localStorage.setItem(LS_KEYS.downloadMode, r.value); } catch (_) { /* 忽略 */ }
-      if (state.artifacts.length) renderArtifacts();
+      refreshArtifactLinks();
     });
   });
 

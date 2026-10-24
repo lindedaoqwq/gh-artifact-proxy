@@ -9,10 +9,10 @@
 - **加速下载**：
   - 公有仓库：下载链接经社区代理前缀加速（默认 gh-proxy.com，实测支持 artifact 路线）
   - 私有仓库：填写 Token 后由浏览器直连 Azure CDN 下载，带**实时进度条**，可取消
-- **多代理切换**：内置 6 个社区代理 + 直连 + 自定义代理，一键复制加速链接给 wget / curl 使用
+- **多代理切换**：内置 7 个社区代理 + 直连 + 自定义代理，一键复制加速链接给 wget / curl 使用
 - **Token 管理**：Token 仅存浏览器 localStorage，直接请求 api.github.com，**不经过任何代理**；开启「API 走代理」时强制禁止携带 Token
 - **弱网兼容**：无法直接访问 api.github.com 时，可开启「API 请求也走代理」（仅公有仓库）
-- **实用细节**：API 限额显示与重置时间提示、404/403/限流等错误的明确指引、最近解析记录（本地）、响应式深色 UI
+- **实用细节**：API 限额显示与重置时间提示、404/403/限流等错误的明确指引、最近解析记录（本地）、响应式浅色 UI
 
 ## 本地预览
 
@@ -63,6 +63,7 @@ python3 -m http.server 8080
 | 代理 | 说明 |
 | --- | --- |
 | `gh-proxy.com` | 默认，实测支持 api.github.com（artifact 下载路线），透传 CORS |
+| `gh-proxy.org` | 备用，同样支持 artifact 下载路线 |
 | `ghfast.top` | 速度快，偶有维护 |
 | `ghproxy.net` | 老牌代理 |
 | `mirror.ghproxy.com` | 老牌代理 |
@@ -81,7 +82,7 @@ python3 -m http.server 8080
 
 ```
 ├── index.html                  # 页面结构
-├── style.css                   # 样式（GitHub 深色主题）
+├── style.css                   # 样式（浅色主题，参考 gh-proxy.com）
 ├── app.js                      # 全部交互逻辑（无依赖）
 ├── .github/workflows/deploy.yml# GitHub Pages 自动部署
 ├── .nojekyll
