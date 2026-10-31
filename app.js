@@ -178,7 +178,9 @@ function downloadModeName() {
 
 /* ---------- 自动测速选最快线路 ---------- */
 
-let routeLatencies = {};  // prefix -> 延迟(ms)；失败/超时置为 null
+const PROBE_SAMPLES = 5;        // 每条线路测速次数，取成功样本平均，降低单次抖动
+const PROBE_TIMEOUT = 4000;     // 单次探测超时(ms)
+let routeLatencies = {};  // prefix -> 平均延迟(ms)；全失败置为 null
 let routeProbing = false;
 
 async function probeRoutes() {
@@ -188,18 +190,18 @@ async function probeRoutes() {
   renderRouteProbe();
   const target = 'https://api.github.com/rate_limit'; // 小体积 JSON，专用于测速
   const results = await Promise.allSettled(routes.map(async (r) => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 6000);
-    const start = performance.now();
-    try {
-      const res = await fetch(r.prefix + target, { signal: ctrl.signal, cache: 'no-store', mode: 'cors' });
-      const ms = Math.round(performance.now() - start);
-      return { prefix: r.prefix, ok: res.ok, ms: res.ok ? ms : null };
-    } catch (_) {
-      return { prefix: r.prefix, ok: false, ms: null };
-    } finally {
-      clearTimeout(timer);
+    let sum = 0, ok = 0;
+    for (let i = 0; i < PROBE_SAMPLES; i++) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT);
+      const start = performance.now();
+      try {
+        const res = await fetch(r.prefix + target, { signal: ctrl.signal, cache: 'no-store', mode: 'cors' });
+        if (res.ok) { sum += performance.now() - start; ok += 1; }
+      } catch (_) { /* 单次失败不计入成功样本 */ }
+      finally { clearTimeout(timer); }
     }
+    return { prefix: r.prefix, ok: ok > 0, ms: ok > 0 ? Math.round(sum / ok) : null };
   }));
 
   const alive = [];
