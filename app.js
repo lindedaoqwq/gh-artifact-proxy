@@ -18,22 +18,22 @@ const CONFIG = {
 };
 
 /**
- * 下载代理列表（第三方社区维护，可用性会变化，可自行增删）。
- * prefix 为空表示直连；'__custom__' 表示使用用户输入的自定义代理。
+ * 加速下载全部走 gh-proxy.com 提供的线路（详见 https://gh-proxy.com）。
+ * prefix 为 '' 表示直连；'__auto__' 表示自动测速选最快；'__custom__' 表示用户输入的自定义代理。
+ * 仅 probe: true 的线路参与「自动选择最快线路」的测速。
  */
 const PROXIES = [
-  { name: 'gh-proxy.com（推荐，支持 artifact 路线）', prefix: 'https://gh-proxy.com/' },
-  { name: 'gh-proxy.org', prefix: 'https://gh-proxy.org/' },
-  { name: 'ghfast.top', prefix: 'https://ghfast.top/' },
-  { name: 'ghproxy.net', prefix: 'https://ghproxy.net/' },
-  { name: 'mirror.ghproxy.com', prefix: 'https://mirror.ghproxy.com/' },
-  { name: 'mirror.houlang.cloud', prefix: 'https://mirror.houlang.cloud/' },
-  { name: 'cors.isteed.cc', prefix: 'https://cors.isteed.cc/' },
-  { name: '直连（不使用代理）', prefix: '' },
-  { name: '自定义代理…', prefix: '__custom__' },
+  { name: '自动选择最快线路', prefix: '__auto__', probe: false },
+  { name: 'gh-proxy.org（Cloudflare）', prefix: 'https://gh-proxy.org/', probe: true },
+  { name: 'v4.gh-proxy.org（Cloudflare 推荐）', prefix: 'https://v4.gh-proxy.org/', probe: true },
+  { name: 'v6.gh-proxy.org（Cloudflare v4/v6）', prefix: 'https://v6.gh-proxy.org/', probe: true },
+  { name: 'cdn.gh-proxy.org（Fastly）', prefix: 'https://cdn.gh-proxy.org/', probe: true },
+  { name: 'axisnow.gh-proxy.org（AxisNow）', prefix: 'https://axisnow.gh-proxy.org/', probe: true },
+  { name: '自定义代理…', prefix: '__custom__', probe: false },
 ];
 
 const LS_KEYS = {
+  schema: 'ghap.schema',
   token: 'ghap.token',
   proxyIndex: 'ghap.proxyIndex',
   customProxy: 'ghap.customProxy',
@@ -41,6 +41,7 @@ const LS_KEYS = {
   downloadMode: 'ghap.downloadMode',
   history: 'ghap.history',
 };
+const PROXY_SCHEMA = 2; // 代理列表结构版本，变更时重置相关偏好
 
 const state = {
   owner: '',
@@ -53,6 +54,7 @@ const state = {
   customProxy: '',
   apiViaProxy: false,
   downloadMode: 'auto', // auto | proxy | direct
+  autoRoute: '',        // 自动模式下测速选出的更快线路前缀
   rateLimit: null,
   loading: false,
 };
@@ -117,8 +119,25 @@ function clampProxyIndex(i) {
   return Number.isInteger(i) && i >= 0 && i < PROXIES.length ? i : 0;
 }
 
+/** 参与自动测速的线路前缀列表 */
+function probeRoutePrefixes() {
+  return PROXIES.filter((p) => p.probe).map((p) => p.prefix);
+}
+
+/** 默认线路：列表中的第一个 gh-proxy 线路（测速未完成时回退使用） */
+function defaultRoutePrefix() {
+  const r = PROXIES.find((p) => /^https?:\/\//i.test(p.prefix));
+  return r ? r.prefix : '';
+}
+
+/** 由代理前缀取简短主机名，用于展示（如 https://gh-proxy.org/ → gh-proxy.org） */
+function hostOf(prefix) {
+  try { return new URL(prefix).host; } catch (_) { return String(prefix); }
+}
+
 function currentProxyPrefix() {
   const p = PROXIES[clampProxyIndex(state.proxyIndex)] || PROXIES[0];
+  if (p.prefix === '__auto__') return state.autoRoute || defaultRoutePrefix();
   if (p.prefix === '__custom__') {
     let v = String(state.customProxy || '').trim();
     if (!v) return '';
@@ -130,6 +149,10 @@ function currentProxyPrefix() {
 
 function currentProxyName() {
   const p = PROXIES[clampProxyIndex(state.proxyIndex)] || PROXIES[0];
+  if (p.prefix === '__auto__') {
+    if (state.autoRoute) return '自动（' + hostOf(state.autoRoute) + '）';
+    return '自动选择最快线路';
+  }
   if (p.prefix === '__custom__') return state.customProxy ? '自定义代理' : '直连';
   return p.prefix ? p.name : '直连';
 }
@@ -151,6 +174,78 @@ function downloadModeName() {
   if (state.downloadMode === 'proxy') return `总是走代理（${currentProxyName()}）`;
   if (state.downloadMode === 'direct') return '总是直连';
   return state.token ? '直连（已填写 Token）' : `代理（${currentProxyName()}）`;
+}
+
+/* ---------- 自动测速选最快线路 ---------- */
+
+let routeLatencies = {};  // prefix -> 延迟(ms)；失败/超时置为 null
+let routeProbing = false;
+
+async function probeRoutes() {
+  const routes = PROXIES.filter((p) => p.probe);
+  if (!routes.length) return;
+  routeProbing = true;
+  renderRouteProbe();
+  const target = 'https://api.github.com/rate_limit'; // 小体积 JSON，专用于测速
+  const results = await Promise.allSettled(routes.map(async (r) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const start = performance.now();
+    try {
+      const res = await fetch(r.prefix + target, { signal: ctrl.signal, cache: 'no-store', mode: 'cors' });
+      const ms = Math.round(performance.now() - start);
+      return { prefix: r.prefix, ok: res.ok, ms: res.ok ? ms : null };
+    } catch (_) {
+      return { prefix: r.prefix, ok: false, ms: null };
+    } finally {
+      clearTimeout(timer);
+    }
+  }));
+
+  const alive = [];
+  routes.forEach((r, i) => {
+    const val = results[i].status === 'fulfilled' ? results[i].value : { ok: false };
+    if (val && val.ok) {
+      routeLatencies[r.prefix] = val.ms;
+      alive.push({ prefix: r.prefix, ms: val.ms });
+    } else {
+      routeLatencies[r.prefix] = null;
+    }
+  });
+  alive.sort((a, b) => a.ms - b.ms);
+  state.autoRoute = alive.length ? alive[0].prefix : defaultRoutePrefix();
+  routeProbing = false;
+  renderRouteProbe();
+  if (state.artifacts.length) refreshArtifactLinks();
+}
+
+/** 渲染「线路测速」面板（仅自动模式可见） */
+function renderRouteProbe() {
+  const wrap = $('route-probe');
+  if (!wrap) return;
+  const p = PROXIES[clampProxyIndex(state.proxyIndex)] || PROXIES[0];
+  const show = p.prefix === '__auto__';
+  wrap.hidden = !show;
+  if (!show) return;
+  const list = $('route-probe-list');
+  if (!list) return;
+  const routes = PROXIES.filter((x) => x.probe);
+  if (routeProbing && !Object.keys(routeLatencies).length) {
+    list.innerHTML = '<li class="route-item probing">测速中…</li>';
+    return;
+  }
+  list.innerHTML = routes.map((r) => {
+    const ms = routeLatencies[r.prefix];
+    const isBest = state.autoRoute && state.autoRoute === r.prefix;
+    const cls = ms == null ? 'down' : 'up';
+    const label = ms == null ? '不可用' : (ms + ' ms');
+    const badge = isBest ? ' <span class="route-best">最快</span>' : '';
+    return `<li class="route-item ${cls}${isBest ? ' is-best' : ''}">`
+      + `<span class="route-dot"></span>`
+      + `<span class="route-host">${escapeHtml(hostOf(r.prefix))}</span>${badge}`
+      + `<span class="route-ms">${label}</span>`
+      + `</li>`;
+  }).join('');
 }
 
 /* ---------- GitHub API ---------- */
@@ -714,11 +809,22 @@ function init() {
     repoLink.hidden = true;
   }
 
-  // 恢复本地设置
+  // 恢复本地设置（代理列表结构变更时重置代理偏好）
   try {
+    const schema = Number(localStorage.getItem(LS_KEYS.schema) || '0');
+    if (schema !== PROXY_SCHEMA) {
+      state.proxyIndex = 0; // 默认：自动选择最快线路
+      state.customProxy = '';
+      try {
+        localStorage.setItem(LS_KEYS.proxyIndex, '0');
+        localStorage.removeItem(LS_KEYS.customProxy);
+        localStorage.setItem(LS_KEYS.schema, String(PROXY_SCHEMA));
+      } catch (_) { /* 忽略 */ }
+    } else {
+      state.proxyIndex = clampProxyIndex(Number(localStorage.getItem(LS_KEYS.proxyIndex)));
+      state.customProxy = localStorage.getItem(LS_KEYS.customProxy) || '';
+    }
     state.token = (localStorage.getItem(LS_KEYS.token) || '').trim();
-    state.proxyIndex = clampProxyIndex(Number(localStorage.getItem(LS_KEYS.proxyIndex)));
-    state.customProxy = localStorage.getItem(LS_KEYS.customProxy) || '';
     state.apiViaProxy = localStorage.getItem(LS_KEYS.apiViaProxy) === '1';
     state.downloadMode = localStorage.getItem(LS_KEYS.downloadMode) || 'auto';
   } catch (_) { /* 隐私模式等场景下忽略 */ }
@@ -778,15 +884,17 @@ function init() {
   sel.value = String(state.proxyIndex);
   const customInput = $('proxy-custom');
   customInput.value = state.customProxy;
-  const syncCustomVisibility = () => {
+  const syncProxyVisibility = () => {
     const p = PROXIES[clampProxyIndex(state.proxyIndex)];
     customInput.hidden = !(p && p.prefix === '__custom__');
+    renderRouteProbe();
   };
-  syncCustomVisibility();
+  syncProxyVisibility();
   sel.addEventListener('change', () => {
     state.proxyIndex = clampProxyIndex(Number(sel.value));
     try { localStorage.setItem(LS_KEYS.proxyIndex, String(state.proxyIndex)); } catch (_) { /* 忽略 */ }
-    syncCustomVisibility();
+    syncProxyVisibility();
+    if (PROXIES[state.proxyIndex].prefix === '__auto__') probeRoutes();
     refreshArtifactLinks();
   });
   customInput.addEventListener('input', () => {
@@ -794,6 +902,11 @@ function init() {
     try { localStorage.setItem(LS_KEYS.customProxy, state.customProxy); } catch (_) { /* 忽略 */ }
     refreshArtifactLinks();
   });
+  // 重新测速按钮
+  const probeBtn = $('route-probe-btn');
+  if (probeBtn) probeBtn.addEventListener('click', () => { routeLatencies = {}; probeRoutes(); });
+  // 默认/恢复为自动线路时，自动测速一次
+  if (PROXIES[clampProxyIndex(state.proxyIndex)].prefix === '__auto__') probeRoutes();
 
   // 下载方式
   const radios = document.querySelectorAll('input[name="download-mode"]');
@@ -829,5 +942,8 @@ if (typeof document !== 'undefined') {
 
 /* Node 环境下导出纯函数，便于测试 */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { parseRunUrl, formatBytes, formatDate, buildProxiedUrl, escapeHtml, PROXIES, state };
+  module.exports = {
+    parseRunUrl, formatBytes, formatDate, buildProxiedUrl, escapeHtml, PROXIES, state,
+    currentProxyPrefix, currentProxyName, probeRoutePrefixes, defaultRoutePrefix, hostOf,
+  };
 }

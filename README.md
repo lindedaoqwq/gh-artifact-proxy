@@ -1,15 +1,15 @@
 # GH Artifact Proxy
 
-输入 GitHub Actions Workflow Run 链接，即可读取该 Run 的 Artifact 列表，并通过社区代理**加速下载**。纯静态页面、零依赖、零构建，可直接部署到 GitHub Pages。
+输入 GitHub Actions Workflow Run 链接，即可读取该 Run 的 Artifact 列表，并通过 gh-proxy.com 提供的加速线路**加速下载**。纯静态页面、零依赖、零构建，可直接部署到 GitHub Pages。
 
 ## 功能特性
 
 - **链接解析**：支持 `https://github.com/owner/repo/actions/runs/<id>`、`owner/repo/<id>`、`api.github.com/repos/…` 等多种格式，粘贴完整链接自动开始解析
 - **信息读取**：展示 Run 状态、工作流、分支、提交、触发方式，以及每个 Artifact 的名称、大小、创建与过期时间
 - **加速下载**：
-  - 公有仓库：下载链接经社区代理前缀加速（默认 gh-proxy.com，实测支持 artifact 路线）
+  - 公有仓库：下载链接经 gh-proxy.com 提供的加速线路前缀转发（默认自动测速选最快，亦可手动指定某条线路）
   - 私有仓库：填写 Token 后由浏览器直连 Azure CDN 下载，带**实时进度条**，可取消
-- **多代理切换**：内置 7 个社区代理 + 直连 + 自定义代理，一键复制加速链接给 wget / curl 使用
+- **多代理切换**：内置 gh-proxy.com 全部 5 条加速线路，支持「自动选择最快线路」实时测速优选，亦可手动指定或自定义代理，一键复制加速链接给 wget / curl 使用
 - **Token 管理**：Token 仅存浏览器 localStorage，直接请求 api.github.com，**不经过任何代理**；开启「API 走代理」时强制禁止携带 Token
 - **弱网兼容**：无法直接访问 api.github.com 时，可开启「API 请求也走代理」（仅公有仓库）
 - **实用细节**：API 限额显示与重置时间提示、404/403/限流等错误的明确指引、最近解析记录（本地）、响应式浅色 UI
@@ -58,19 +58,18 @@ python3 -m http.server 8080
 
 ## 代理说明
 
-代理服务由第三方社区维护，可用性会变化（被封、限流、维护等），本工具已内置多个备选并支持自定义：
+所有加速线路均来自 [gh-proxy.com](https://gh-proxy.com)，仅用于加速 GitHub 资源（Release / Raw / Archive / API）。默认「自动选择最快线路」会实时测速并选用延迟最低的节点：
 
-| 代理 | 说明 |
+| 线路 | 说明 |
 | --- | --- |
-| `gh-proxy.com` | 默认，实测支持 api.github.com（artifact 下载路线），透传 CORS |
-| `gh-proxy.org` | 备用，同样支持 artifact 下载路线 |
-| `ghfast.top` | 速度快，偶有维护 |
-| `ghproxy.net` | 老牌代理 |
-| `mirror.ghproxy.com` | 老牌代理 |
-| `mirror.houlang.cloud` | 社区维护 |
-| `cors.isteed.cc` | 社区维护 |
+| 自动选择最快线路（默认） | 启动时对各线路发起测速，自动选用延迟最低的节点 |
+| `gh-proxy.org`（Cloudflare） | gh-proxy.com 主线路 |
+| `v4.gh-proxy.org`（Cloudflare 推荐） | Cloudflare 优选线路 |
+| `v6.gh-proxy.org`（Cloudflare v4/v6） | 支持双栈 |
+| `cdn.gh-proxy.org`（Fastly） | Fastly CDN 线路 |
+| `axisnow.gh-proxy.org`（AxisNow） | AxisNow 线路 |
 
-失效时请在页面「高级选项 → 下载代理」中更换，或填写自定义代理地址（格式 `https://域名/`，拼接规则为「前缀 + 完整原始 URL」）。
+可在页面「高级选项 → 下载代理」中切换线路、点击「重新测速」刷新延迟，或填写自定义代理地址（格式 `https://域名/`，拼接规则为「前缀 + 完整原始 URL」）。
 
 ## 安全与隐私
 

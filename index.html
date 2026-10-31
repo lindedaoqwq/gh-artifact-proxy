@@ -83,8 +83,15 @@
           </div>
           <input id="proxy-custom" type="text" spellcheck="false" autocomplete="off"
                  placeholder="https://your-proxy.example.com/" hidden />
+          <div id="route-probe" class="route-probe" hidden>
+            <div class="route-probe-head">
+              <span>线路测速 · 自动选用延迟最低节点</span>
+              <button id="route-probe-btn" class="btn btn-ghost btn-narrow" type="button">重新测速</button>
+            </div>
+            <ul id="route-probe-list" class="route-probe-list"></ul>
+          </div>
           <p class="hint">
-            代理以「前缀 + 原始下载链接」的方式加速 Artifact 压缩包。第三方社区代理可用性会变化，失效时请更换或使用自定义代理。
+            加速线路均来自 <a href="https://gh-proxy.com" target="_blank" rel="noopener">gh-proxy.com</a>。选择「自动选择最快线路」会实时测速并选用延迟最低的节点；其余线路可手动指定，或填写自定义代理。
           </p>
         </div>
 
@@ -158,8 +165,8 @@
           <div class="feature-icon icon-violet">
             <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg>
           </div>
-          <h3>多代理调度 · 一键切换</h3>
-          <p>内置多个社区加速节点并支持自定义代理，失效时随手切换，复制链接即走 wget / curl。</p>
+          <h3>多线路调度 · 自动优选</h3>
+          <p>内置 gh-proxy.com 全球加速节点，支持自动测速选最快线路，也可手动指定，复制链接即走 wget / curl。</p>
         </div>
       </div>
     </section>
