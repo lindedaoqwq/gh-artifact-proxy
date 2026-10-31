@@ -39,7 +39,6 @@ const LS_KEYS = {
   customProxy: 'ghap.customProxy',
   apiViaProxy: 'ghap.apiViaProxy',
   downloadMode: 'ghap.downloadMode',
-  history: 'ghap.history',
 };
 const PROXY_SCHEMA = 2; // 代理列表结构版本，变更时重置相关偏好
 
@@ -401,7 +400,6 @@ async function loadRun() {
     state.artifacts = Array.isArray(arts.artifacts) ? arts.artifacts : [];
     renderRun(run);
     renderArtifacts();
-    pushHistory(parsed);
     showStatus(
       'info',
       state.artifacts.length ? `读取成功，共 ${state.artifacts.length} 个 Artifact` : '读取成功，但该 Run 下没有 Artifact',
@@ -744,61 +742,6 @@ function toast(msg) {
   toastTimer = window.setTimeout(() => el.classList.remove('show'), 2200);
 }
 
-/* ---------- 最近解析记录 ---------- */
-
-function getHistory() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(LS_KEYS.history) || '[]');
-    return Array.isArray(arr) ? arr : [];
-  } catch (_) {
-    return [];
-  }
-}
-
-function pushHistory(parsed) {
-  const key = `${parsed.owner}/${parsed.repo}#${parsed.runId}`;
-  const hist = getHistory().filter((h) => h && h.key !== key);
-  hist.unshift({ key, owner: parsed.owner, repo: parsed.repo, runId: parsed.runId, t: Date.now() });
-  try {
-    localStorage.setItem(LS_KEYS.history, JSON.stringify(hist.slice(0, 8)));
-  } catch (_) { /* 存储失败时静默忽略 */ }
-  renderHistory();
-}
-
-function renderHistory() {
-  const box = $('history');
-  if (!box) return;
-  const hist = getHistory();
-  if (!hist.length) {
-    box.hidden = true;
-    box.innerHTML = '';
-    return;
-  }
-  box.hidden = false;
-  box.innerHTML = '<span class="history-label">最近解析：</span>';
-  hist.forEach((h) => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.textContent = `${h.owner}/${h.repo} #${h.runId}`;
-    chip.title = '点击重新加载';
-    chip.addEventListener('click', () => {
-      $('run-url').value = `https://github.com/${h.owner}/${h.repo}/actions/runs/${h.runId}`;
-      loadRun();
-    });
-    box.appendChild(chip);
-  });
-  const clear = document.createElement('button');
-  clear.type = 'button';
-  clear.className = 'chip chip-clear';
-  clear.textContent = '清空';
-  clear.addEventListener('click', () => {
-    try { localStorage.removeItem(LS_KEYS.history); } catch (_) { /* 忽略 */ }
-    renderHistory();
-  });
-  box.appendChild(clear);
-}
-
 /* ---------- 初始化 ---------- */
 
 function init() {
@@ -934,7 +877,6 @@ function init() {
   // Artifact 列表点击委托
   initArtifactListDelegation();
 
-  renderHistory();
   renderRateLimit();
 }
 
