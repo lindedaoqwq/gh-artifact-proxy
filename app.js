@@ -777,7 +777,10 @@ function init() {
   // 输入区
   const urlInput = $('run-url');
   urlInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadRun();
+    // 输入法（IME）合成中（如拼音候选未确认）按 Enter 不应触发解析，
+    // 否则会拿半截拼音 URL 去解析。e.isComposing 现代浏览器支持，
+    // e.keyCode === 229 兼容旧版浏览器。
+    if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) loadRun();
   });
   urlInput.addEventListener('paste', () => {
     window.setTimeout(() => {
